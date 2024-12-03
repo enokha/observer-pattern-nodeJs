@@ -1,42 +1,31 @@
-const express = require("express")
-const app = express()
-app.use(express.json())
-const db = require("./db")
-const port = 3000
+const express = require('express');
+const app = express();
+app.use(express.json());
 
-const Observable = require("./Observable")
-const logSubscriber = require("./subscribers/logSubscriber")
-const notifySubscriber = require("./subscribers/notifySubscriber")
-const emailSubscriber = require("./subscribers/emailSubscriber")
-const databaseLogSubscriber = require("./subscribers/databaseLogSubscriber")
+const Observable = require('./Observable');
+const observable = new Observable();
+const logSubscriber = require('./subscribers/logSubscriber');
+const databaseLogSubscriber = require('./subscribers/databaseLogSubscriber');
+
+//subscribe functions to the observable
+observable.subscribe(logSubscriber);
+observable.subscribe(databaseLogSubscriber);
 
 app.post("/", (req, res) => {
-	const { name, createdAt } = req.body
+    const { name, createdAt } = req.body;
+    if (!name || !createdAt) {
+        return res.status(400).send("Name and createdAt are required.");
+    }
 
-	if (!name || !createdAt) {
-		return res.status(400).json({ message: "Name and createdAt are required" })
-	}
+    const newData = { name, createdAt };
 
-	const newData = { name, createdAt }
+    //notify all subscribesr with new data
+    observable.notify(newData);
 
-	console.log("Resource created:", newData)
+    res.status(201).json({ message: "Resource created successfully", data: newData });
+});
 
-	// Notify all subscribers
-
-	res.status(201).json({ message: "Resource created", data: newData })
-})
-
-// Endpoint: Get all resources
-app.get("/", (req, res) => {
-	db.all(`SELECT * FROM resources`, [], (err, rows) => {
-		if (err) {
-			console.error("Error fetching resources:", err.message)
-			return res.status(500).json({ message: "Error fetching resources" })
-		}
-		res.json({ data: rows })
-	})
-})
-
-app.listen(port, () => {
-	console.log(`Running here ... http://localhost:${port}/`)
-})
+const PORT = 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
